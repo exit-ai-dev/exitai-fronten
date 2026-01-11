@@ -223,7 +223,6 @@ export default function LiffChat() {
                     <UserMessage
                       content={m.content || (i === messages.length - 1 && isStreaming ? "…" : "")}
                       timestamp={m.timestamp}
-                      onResend={!isStreaming ? () => handleResend(i) : undefined}
                     />
                   ) : (
                     <AssistantBubble

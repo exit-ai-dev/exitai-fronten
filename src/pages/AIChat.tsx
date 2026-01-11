@@ -3,16 +3,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion";
 import { streamChat, ChatApiError } from "../lib/chatApi";
 import type { ChatMessage } from "../lib/chatApi";
-import { loadPresets, type Preset } from "../lib/presets";
-import { exportChat } from "../lib/export";
-import { copyToClipboard, showCopyFallbackHint } from "../lib/copy";
+import { copyToClipboard } from "../lib/copy";
 import {
   createConversationTree,
   appendMessage,
-  editMessageAndBranch,
   getCurrentMessages,
-  getSiblingBranches,
-  switchToPath,
   serializeTree,
   deserializeTree,
   type ConversationTree,
@@ -20,9 +15,8 @@ import {
 import { getSessionKeys } from "../lib/session";
 import { saveConversation, getConversation } from "../lib/conversationApi";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Send, Paperclip, Mic, Plus, Search, MessageSquare, Settings, ChevronDown, Sparkles, Copy, Check } from "lucide-react";
+import { Send, Paperclip, Mic, Plus, Search, MessageSquare, Settings, ChevronDown, Copy, Check } from "lucide-react";
 import MarkdownMessage from "../components/MarkdownMessage";
-import TalkingAvatar from "../components/TalkingAvatar";
 import { formatRelativeTime } from "../lib/time";
 import { AmbientBackground } from "../components/AmbientBackground";
 
@@ -59,22 +53,15 @@ export default function AIChat() {
   const [input, setInput] = useState("");
   const [cat, setCat] = useState<Category>(CATS[0]);
   const [sys, setSys] = useState(DEFAULT_SYS(CATS[0]));
-  const [kumaEnabled, setKumaEnabled] = useState(false);
+  const [kumaEnabled] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [darkMode, setDarkMode] = useState(true); // Always dark
-  const [error, setError] = useState<ChatApiError | null>(null);
-  const [presets] = useState<Preset[]>(loadPresets());
-  const [selectedPreset, setSelectedPreset] = useState<string>("custom");
-  const [streamSpeed, setStreamSpeed] = useState(0);
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [ttsMode, setTtsMode] = useState<'webspeech' | 'voicevox'>('webspeech');
+  const [ttsMode] = useState<'webspeech' | 'voicevox'>('webspeech');
   const [isFocused, setIsFocused] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ローディング表示制御（ちらつき防止）
   const [showLoader, setShowLoader] = useState(false);
 
-  const abortRef = useRef<AbortController | null>(null);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -84,8 +71,8 @@ export default function AIChat() {
   const prevMessageCountRef = useRef<number>(0);
 
   // ローディング制御用のタイマー参照（ちらつき防止）
-  const loaderDelayTimer = useRef<NodeJS.Timeout | null>(null);
-  const loaderMinDisplayTimer = useRef<NodeJS.Timeout | null>(null);
+  const loaderDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loaderMinDisplayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loaderShownAt = useRef<number | null>(null);
 
   // 連打防止：送信中フラグ
@@ -255,38 +242,28 @@ export default function AIChat() {
   }, [messages.length]);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
     setIsStreaming(false);
+    isSubmitting.current = false; // 二重送信フラグOFF
     localStorage.setItem(STORAGE_KEYS.tree, serializeTree(conversationTree));
     localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(messages));
   }, [conversationTree, messages]);
 
   const sendMessage = useCallback(
-    async (msgs: ChatMessage[], tree: ConversationTree) => {
+    async (msgs: ChatMessage[]) => {
       // 連打防止：送信中または既にストリーミング中の場合は無視
       if (isStreaming || isSubmitting.current) return;
 
       isSubmitting.current = true; // 二重送信フラグON
-      setError(null);
       setIsStreaming(true);
-      setStreamSpeed(0);
       streamStartRef.current = Date.now();
       streamCharsRef.current = 0;
 
-      const controller = new AbortController();
-      abortRef.current = controller;
-
       const systemPrompt = kumaEnabled ? `${sys}\n\n${KUMA_STYLE}` : sys;
 
-      await streamChat(
+      streamChat(
         { messages: [{ role: "system", content: systemPrompt }, ...msgs] },
-        controller.signal,
-        (chunk) => {
+        (chunk: string) => {
           streamCharsRef.current += chunk.length;
-          const elapsed = (Date.now() - streamStartRef.current) / 1000;
-          const speed = elapsed > 0 ? Math.round(streamCharsRef.current / elapsed) : 0;
-          setStreamSpeed(speed);
 
           setConversationTree((prev) => {
             const currentMsgs = getCurrentMessages(prev);
@@ -314,8 +291,6 @@ export default function AIChat() {
         () => {
           // ストリーミング完了
           setIsStreaming(false);
-          setStreamSpeed(0);
-          abortRef.current = null;
           isSubmitting.current = false; // 二重送信フラグOFF
           const currentMessages = getCurrentMessages(conversationTree);
           const lastMessage = currentMessages[currentMessages.length - 1];
@@ -323,14 +298,11 @@ export default function AIChat() {
             speakText(lastMessage.content);
           }
         },
-        (err) => {
+        (err: ChatApiError) => {
           // エラー時
           console.error(err);
           setIsStreaming(false);
-          setStreamSpeed(0);
-          abortRef.current = null;
           isSubmitting.current = false; // 二重送信フラグOFF
-          setError(err);
         }
       );
     },
@@ -348,29 +320,7 @@ export default function AIChat() {
     const updatedTree = appendMessage(conversationTree, userMsg);
     setConversationTree(updatedTree);
     setInput("");
-    sendMessage(getCurrentMessages(updatedTree), updatedTree);
-  };
-
-  const handleEdit = (index: number, newContent: string) => {
-    const targetMsg = messages[index];
-    if (!targetMsg) return;
-    const path = conversationTree.currentPath;
-    const nodeId = path[index + 1];
-    if (nodeId) {
-      const updatedTree = editMessageAndBranch(conversationTree, nodeId, newContent);
-      setConversationTree(updatedTree);
-      sendMessage(getCurrentMessages(updatedTree), updatedTree);
-    }
-  };
-
-  const handleResend = (index: number) => {
-    const targetPath = conversationTree.currentPath.slice(0, index + 2);
-    const targetNodeId = targetPath[targetPath.length - 1];
-    if (targetNodeId) {
-      const updatedTree = switchToPath(conversationTree, targetNodeId);
-      setConversationTree(updatedTree);
-      sendMessage(getCurrentMessages(updatedTree), updatedTree);
-    }
+    sendMessage(getCurrentMessages(updatedTree));
   };
 
   const newChat = () => {
