@@ -21,7 +21,7 @@ export default function BranchIndicator({ branches, currentIndex, onSwitchBranch
       <button
         type="button"
         onClick={() => setShowMenu(!showMenu)}
-        className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900 transition"
+        className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border border-accent bg-accent/10 text-accent-foreground hover:bg-accent/20 transition"
         title="他の分岐を表示"
         aria-label={`${totalBranches}個の分岐があります`}
       >
@@ -48,16 +48,16 @@ export default function BranchIndicator({ branches, currentIndex, onSwitchBranch
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute left-0 top-full mt-1 z-50 min-w-[280px] max-w-[400px] rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg overflow-hidden"
+              className="absolute left-0 top-full mt-1 z-50 min-w-[280px] max-w-[400px] glass-light rounded-lg shadow-lg overflow-hidden"
             >
-              <div className="px-3 py-2 bg-[var(--bg)] border-b border-[var(--border)]">
-                <h3 className="text-xs font-semibold text-[var(--fg)]">会話の分岐</h3>
+              <div className="px-3 py-2 bg-card/50 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">会話の分岐</h3>
               </div>
               <div className="max-h-[300px] overflow-y-auto">
                 {currentIndex === 0 && (
-                  <div className="px-3 py-2 bg-brand/10 border-l-2 border-brand">
+                  <div className="px-3 py-2 bg-primary/10 border-l-2 border-primary">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-brand">● 現在</span>
+                      <span className="text-xs font-mono text-primary">● 現在</span>
                     </div>
                   </div>
                 )}
@@ -71,17 +71,17 @@ export default function BranchIndicator({ branches, currentIndex, onSwitchBranch
                         onSwitchBranch(branch.nodeId);
                         setShowMenu(false);
                       }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg)] transition border-l-2 ${
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary/50 transition border-l-2 ${
                         isActive
-                          ? "bg-brand/10 border-brand"
+                          ? "bg-primary/10 border-primary"
                           : "border-transparent"
                       }`}
                     >
                       {isActive && (
-                        <div className="font-mono text-brand mb-1">● 現在</div>
+                        <div className="font-mono text-primary mb-1">● 現在</div>
                       )}
-                      <div className="text-[var(--fg)] line-clamp-2">{branch.preview}</div>
-                      <div className="text-[var(--fg-muted)] mt-1">
+                      <div className="text-foreground line-clamp-2">{branch.preview}</div>
+                      <div className="text-muted-foreground mt-1">
                         {new Date(branch.timestamp).toLocaleString("ja-JP", {
                           month: "numeric",
                           day: "numeric",

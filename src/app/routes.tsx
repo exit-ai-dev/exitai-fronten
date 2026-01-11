@@ -26,18 +26,47 @@ export const router = createBrowserRouter(
       path: '/',
       element: (
         <ProtectedRoute>
-          <AppLayout />
+          <AIChat />
         </ProtectedRoute>
       ),
       errorElement: <NotFound />,
+    },
+    {
+      path: '/history',
+      element: (
+        <ProtectedRoute>
+          <AppLayout />
+        </ProtectedRoute>
+      ),
       children: [
-        { index: true, element: <Navigate to="/chat/ai" replace /> },
-        { path: 'chat/ai', element: <AIChat /> },
-        { path: 'history', element: <ConversationHistory /> },
-        { path: 'attendance', element: <Attendance /> },
-        { path: 'settings', element: <Settings /> },
-        { path: '*', element: <NotFound /> },
+        { index: true, element: <ConversationHistory /> },
       ],
+    },
+    {
+      path: '/attendance',
+      element: (
+        <ProtectedRoute>
+          <AppLayout />
+        </ProtectedRoute>
+      ),
+      children: [
+        { index: true, element: <Attendance /> },
+      ],
+    },
+    {
+      path: '/settings',
+      element: (
+        <ProtectedRoute>
+          <AppLayout />
+        </ProtectedRoute>
+      ),
+      children: [
+        { index: true, element: <Settings /> },
+      ],
+    },
+    {
+      path: '*',
+      element: <NotFound />,
     },
   ],
   {

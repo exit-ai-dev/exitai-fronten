@@ -29,14 +29,19 @@ const AssistantBubble = React.memo(({ content, talking = false, streamSpeed, tim
       transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
       className="flex items-start gap-3"
     >
-      <TalkingAvatar size={96} active={talking} className="flex-shrink-0" />
+      <div className="relative flex-shrink-0">
+        <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
+        <div className="relative h-10 w-10 rounded-lg glass flex items-center justify-center border border-primary/20">
+          <TalkingAvatar size={40} active={talking} className="rounded-lg" />
+        </div>
+      </div>
 
       <div className="flex-1 max-w-[min(860px,calc(100%-8.5rem))]">
         {reasoning && <ThinkingProcess reasoning={reasoning} thinkingTime={thinkingTime} />}
 
-        <div className="relative rounded-2xl border border-red-100 dark:border-[#2b1414] bg-red-50 dark:bg-[#1b1010] text-neutral-900 dark:text-[#eae1e1] px-4 py-3 text-sm shadow-[0_6px_20px_rgba(0,0,0,0.08)] break-words">
+        <div className="relative glass rounded-2xl rounded-tl-sm text-foreground px-4 py-3 text-sm shadow-[0_6px_20px_rgba(0,0,0,0.08)] break-words group border border-primary/10">
           {streamSpeed && streamSpeed > 0 && (
-            <div className="absolute left-3 top-3 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+            <div className="absolute left-3 top-3 text-xs text-primary font-mono animate-pulse-glow">
               ⚡ {streamSpeed} char/s
             </div>
           )}
@@ -50,14 +55,14 @@ const AssistantBubble = React.memo(({ content, talking = false, streamSpeed, tim
               if (!ok) showCopyFallbackHint();
               setTimeout(() => setCopied(null), 1200);
             }}
-            className="absolute right-2 top-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 text-xs px-2 py-1 shadow hover:bg-white dark:hover:bg-slate-800 focus-visible:ring-2 ring-brand ring-offset-2 transition opacity-0 group-hover:opacity-100 hover:opacity-100"
+            className="absolute right-2 top-2 rounded-md border border-border bg-card/80 text-xs px-2 py-1 shadow hover:bg-secondary focus-visible:ring-2 ring-ring ring-offset-2 transition opacity-0 group-hover:opacity-100 hover:opacity-100"
           >
             {copied === true ? "Copied!" : copied === false ? "Failed" : "Copy"}
           </button>
-          <div className="pt-6 group">
+          <div className="pt-6">
             <MarkdownMessage content={content} />
             {timestamp && (
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 text-right">
+              <div className="text-xs text-muted-foreground mt-2 text-right">
                 {formatRelativeTime(timestamp)}
               </div>
             )}
