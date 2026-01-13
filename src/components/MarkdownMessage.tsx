@@ -71,7 +71,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...p
 
 const MarkdownMessage = React.memo(({ content }: { content: string }) => {
   return (
-    <div className="prose prose-neutral dark:prose-invert max-w-none prose-pre:p-0 prose-code:before:content-none prose-code:after:content-none">
+    <div className="prose prose-neutral dark:prose-invert max-w-none break-words prose-pre:p-0 prose-code:before:content-none prose-code:after:content-none prose-p:my-0 prose-ul:my-0 prose-ol:my-0 prose-li:my-0">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
