@@ -39,8 +39,7 @@ function ParallaxCamera({ pointer }: { pointer: MutableRefObject<PointerState> }
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
 
-    // マウスに基づく視差効果（より滑らか）
-    const targetX = pointer.current.x * 0.5;
+    // マウスに基づく視差効果（より滑らか！E    const targetX = pointer.current.x * 0.5;
     const targetY = pointer.current.y * 0.3;
 
     // 微妙な呼吸のような動き
@@ -49,8 +48,7 @@ function ParallaxCamera({ pointer }: { pointer: MutableRefObject<PointerState> }
     cameraTarget.current.set(targetX, targetY, 5.5 + breathe);
     camera.position.lerp(cameraTarget.current, 0.03);
 
-    // 視点もわずかにずらす
-    lookAtTarget.current.set(
+    // 視点もわずかにずらぁE    lookAtTarget.current.set(
       targetX * 0.1,
       targetY * 0.1,
       0
@@ -71,8 +69,7 @@ function OrbitRing() {
   useFrame(({ clock }, delta) => {
     const t = clock.getElapsedTime();
 
-    // 複雑な速度変化（イージング）
-    const speedBase = 0.6;
+    // 褁E��な速度変化�E�イージング�E�E    const speedBase = 0.6;
     const speedVariation1 = 0.15 * Math.sin(t * 0.4);
     const speedVariation2 = 0.08 * Math.sin(t * 1.2);
     const speedVariation3 = 0.05 * Math.sin(t * 0.15);
@@ -80,17 +77,15 @@ function OrbitRing() {
 
     spin.current += delta * speed;
 
-    // 歳差運動（複数の周期を重ねる）
-    if (outerPivotRef.current) {
-      // 長周期のゆらぎ
-      const tiltX = 0.7 + 0.25 * Math.sin(t * 0.25);
+    // 歳差運動�E�褁E��の周期を重�Eる！E    if (outerPivotRef.current) {
+      // 長周期�EめE��ぁE      const tiltX = 0.7 + 0.25 * Math.sin(t * 0.25);
       const tiltZ = 0.2 * Math.sin(t * 0.18);
       outerPivotRef.current.rotation.x = tiltX;
       outerPivotRef.current.rotation.z = tiltZ;
     }
 
     if (innerPivotRef.current) {
-      // 短周期の揺らぎ
+      // 短周期�E揺らぎ
       const wobbleX = 0.12 * Math.sin(t * 0.9);
       const wobbleZ = 0.15 * Math.sin(t * 0.7 + Math.PI / 4);
       innerPivotRef.current.rotation.x = wobbleX;
@@ -99,17 +94,14 @@ function OrbitRing() {
 
     if (ringRef.current) {
       ringRef.current.rotation.y = spin.current;
-      // リング自体も微妙に傾く
-      ringRef.current.rotation.x = 0.08 * Math.sin(t * 0.6);
+      // リング自体も微妙に傾ぁE      ringRef.current.rotation.x = 0.08 * Math.sin(t * 0.6);
 
-      // 透明度の変化（濃くなったり薄くなったり）
-      const material = ringRef.current.material as THREE.MeshStandardMaterial;
+      // 透�E度の変化�E�濁E��なったり薁E��なったり�E�E      const material = ringRef.current.material as THREE.MeshStandardMaterial;
       material.opacity = 0.7 + 0.2 * Math.sin(t * 0.8);
     }
 
     if (innerRingRef.current) {
-      // インナーリングの透明度変化（メインと逆位相）
-      const material = innerRingRef.current.material as THREE.MeshStandardMaterial;
+      // インナ�Eリングの透�E度変化�E�メインと送E��相�E�E      const material = innerRingRef.current.material as THREE.MeshStandardMaterial;
       material.opacity = 0.4 + 0.25 * Math.sin(t * 0.8 + Math.PI);
     }
   });
@@ -117,7 +109,7 @@ function OrbitRing() {
   return (
     <group ref={outerPivotRef}>
       <group ref={innerPivotRef}>
-        {/* メインリング - 透明感のある黒 */}
+        {/* メインリング - 透�E感�Eある黁E*/}
         <mesh ref={ringRef} scale={[1.7, 0.75, 1.15]}>
           <torusGeometry args={[1.05, 0.085, 32, 128]} />
           <meshStandardMaterial
@@ -129,7 +121,7 @@ function OrbitRing() {
             opacity={0.7}
           />
         </mesh>
-        {/* インナーリング - さらに透明 */}
+        {/* インナ�Eリング - さらに透�E */}
         <mesh ref={innerRingRef} scale={[1.52, 0.67, 1.03]} rotation={[0, 0, 0]}>
           <torusGeometry args={[1.05, 0.04, 24, 128]} />
           <meshStandardMaterial
@@ -158,18 +150,17 @@ function CoreSphere() {
 
       const material = meshRef.current.material as THREE.MeshStandardMaterial;
 
-      // 発光の強度を変化
+      // 発光�E強度を変化
       material.emissiveIntensity = 0.5 + 0.2 * Math.sin(t * 1.5);
 
-      // 色の濃淡変化（赤の明度を変化させる）
-      const colorIntensity = 0.85 + 0.15 * Math.sin(t * 0.9);
+      // 色の濁E��変化�E�赤の明度を変化させる！E      const colorIntensity = 0.85 + 0.15 * Math.sin(t * 0.9);
       material.color.setRGB(
         0.9 * colorIntensity,
         0.09 * colorIntensity,
         0.09 * colorIntensity
       );
 
-      // 透明度も微妙に変化
+      // 透�E度も微妙に変化
       material.opacity = 0.95 + 0.05 * Math.sin(t * 1.2);
     }
   });
@@ -222,8 +213,7 @@ function Particles() {
       particlesRef.current.rotation.x = Math.sin(t * 0.2) * 0.1;
     }
 
-    // パーティクルの透明度を波のように変化させる
-    if (materialRef.current) {
+    // パ�EチE��クルの透�E度を波のように変化させめE    if (materialRef.current) {
       materialRef.current.opacity = 0.25 + 0.2 * Math.sin(t * 1.3);
     }
   });
@@ -233,9 +223,7 @@ function Particles() {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={count}
-          array={particles.positions}
-          itemSize={3}
+          args={[particles.positions, 3]}
         />
       </bufferGeometry>
       <pointsMaterial
@@ -254,18 +242,18 @@ function Particles() {
 function LogoScene({ pointer }: { pointer: MutableRefObject<PointerState> }) {
   return (
     <>
-      {/* 環境光 - 少し明るめで透明感を出す */}
+      {/* 環墁E�E - 少し明るめで透�E感を出ぁE*/}
       <ambientLight intensity={0.4} />
 
-      {/* メインライト - 柔らかい光 */}
+      {/* メインライチE- 柔らかい允E*/}
       <directionalLight position={[5, 5, 5]} intensity={1.0} color="#ffffff" />
 
-      {/* アクセントライト - 透明感を強調 */}
+      {/* アクセントライチE- 透�E感を強調 */}
       <pointLight position={[-3, 2, 4]} intensity={0.6} color="#ff8888" />
       <pointLight position={[3, -2, 3]} intensity={0.5} color="#6b6bff" />
       <pointLight position={[0, -3, 2]} intensity={0.4} color="#ff6b9d" />
 
-      {/* リムライト - 輪郭を柔らかく */}
+      {/* リムライチE- 輪郭を柔らかぁE*/}
       <spotLight
         position={[0, 5, -5]}
         angle={0.6}
@@ -279,7 +267,7 @@ function LogoScene({ pointer }: { pointer: MutableRefObject<PointerState> }) {
       <Particles />
       <ParallaxCamera pointer={pointer} />
 
-      {/* ポストプロセッシング効果 - ブルームを強化 */}
+      {/* ポスト�EロセチE��ング効极E- ブルームを強匁E*/}
       <EffectComposer>
         <Bloom
           intensity={0.7}
@@ -315,3 +303,4 @@ export function OrbitLogo({ size = 160, showText = true, className }: OrbitLogoP
     </div>
   );
 }
+
