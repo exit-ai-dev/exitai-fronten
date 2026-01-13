@@ -42,6 +42,80 @@ type Category = (typeof CATS)[number];
 const DEFAULT_SYS = (cat: string) =>
   `あなたは${cat}領域のシステムエンジニアです。要件の聞き返し→前提の明確化→箇条書きの手順→最後に注意点の順で、簡潔かつ正確に答えてください。`;
 
+type MessageRowProps = {
+  message: ChatMessage;
+  isUser: boolean;
+};
+
+function MessageRow({ message, isUser }: MessageRowProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    copyToClipboard(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [message.content]);
+
+  return (
+    <div className={`flex gap-4 ${isUser ? "justify-end" : ""}`}>
+      {!isUser && (
+        <div className="flex-shrink-0">
+          <div className="h-8 w-8 rounded-lg glass border border-primary/20 flex items-center justify-center">
+            <img src="/brand.jpg" alt="ET Logo" className="h-6 w-6 object-contain" />
+          </div>
+        </div>
+      )}
+
+      <div className={`max-w-[80%] ${isUser ? "order-first" : ""}`}>
+        <div
+          className={`rounded-2xl px-4 py-3 ${
+            isUser
+              ? "bg-primary/10 border border-primary/20 rounded-tr-sm"
+              : "glass border border-border rounded-tl-sm"
+          }`}
+        >
+          {isUser ? (
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{message.content}</p>
+          ) : (
+            <div className="text-sm text-foreground leading-relaxed">
+              <MarkdownMessage content={message.content} />
+            </div>
+          )}
+        </div>
+
+        {!isUser && (
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={handleCopy}
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            </button>
+            {message.timestamp && (
+              <span className="text-[10px] text-muted-foreground">{formatRelativeTime(message.timestamp)}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {isUser && (
+        <div className="flex-shrink-0">
+          <div className="h-8 w-8 rounded-lg glass border border-border flex items-center justify-center">
+            <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AIChat() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -446,69 +520,7 @@ export default function AIChat() {
 
             {messages.map((m, i) => {
               const isUser = m.role === "user";
-              const [copied, setCopied] = React.useState(false);
-
-              const handleCopy = () => {
-                copyToClipboard(m.content);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              };
-
-              return (
-                <div key={i} className={`flex gap-4 ${isUser ? "justify-end" : ""}`}>
-                  {!isUser && (
-                    <div className="flex-shrink-0">
-                      <div className="h-8 w-8 rounded-lg glass border border-primary/20 flex items-center justify-center">
-                        <img src="/brand.jpg" alt="ET Logo" className="h-6 w-6 object-contain" />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className={`max-w-[80%] ${isUser ? "order-first" : ""}`}>
-                    <div
-                      className={`rounded-2xl px-4 py-3 ${
-                        isUser
-                          ? "bg-primary/10 border border-primary/20 rounded-tr-sm"
-                          : "glass border border-border rounded-tl-sm"
-                      }`}
-                    >
-                      {isUser ? (
-                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{m.content}</p>
-                      ) : (
-                        <div className="text-sm text-foreground leading-relaxed">
-                          <MarkdownMessage content={m.content} />
-                        </div>
-                      )}
-                    </div>
-
-                    {!isUser && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          onClick={handleCopy}
-                          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                        >
-                          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                        </button>
-                        {m.timestamp && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {formatRelativeTime(m.timestamp)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {isUser && (
-                    <div className="flex-shrink-0">
-                      <div className="h-8 w-8 rounded-lg glass border border-border flex items-center justify-center">
-                        <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
+              return <MessageRow key={m.timestamp ?? i} message={m} isUser={isUser} />;
             })}
 
             {/* ローディング表示（150ms遅延後に表示、一度表示したら最低300ms表示） */}

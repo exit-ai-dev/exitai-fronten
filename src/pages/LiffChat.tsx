@@ -13,11 +13,12 @@ import UserMessage from "../components/UserMessage";
 import ErrorBanner from "../components/ErrorBanner";
 
 const LIFF_ID = import.meta.env.VITE_LINE_LIFF_ID || "";
+type LiffProfile = Awaited<ReturnType<typeof liff.getProfile>>;
 
 export default function LiffChat() {
   const [liffReady, setLiffReady] = useState(false);
   const [liffError, setLiffError] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<LiffProfile | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
