@@ -123,66 +123,6 @@ function MessageRow({ message, isUser }: MessageRowProps) {
   );
 }
 
-function ThinkingMessage() {
-  const thinkingSteps = [
-    { step: "Analyzing context...", done: true },
-    { step: "Retrieving relevant history...", done: true },
-    { step: "Drafting a response...", active: true },
-    { step: "Polishing language...", done: false },
-    { step: "Finalizing output...", done: false },
-  ];
-
-  return (
-    <div className="flex gap-3">
-      <div className="flex-shrink-0">
-        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-          <Bot className="h-4 w-4 text-slate-600" />
-        </div>
-      </div>
-      <div className="flex-1 max-w-[75%]">
-        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden">
-          <div className="w-full flex items-center gap-3 px-5 py-3">
-            <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-sm font-medium text-slate-900">Thinking...</span>
-            <span className="text-xs text-slate-400 ml-auto">3 of 5</span>
-          </div>
-          <div className="px-5 pb-4 border-t border-slate-100">
-            <div className="pt-3 space-y-2">
-              {thinkingSteps.map((item, index) => (
-                <div key={index} className="flex items-center gap-3 text-sm">
-                  <div
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      item.done ? "bg-green-500" : item.active ? "bg-red-500 animate-pulse" : "bg-slate-300"
-                    }`}
-                  />
-                  <span
-                    className={
-                      item.done
-                        ? "text-slate-400 line-through"
-                        : item.active
-                          ? "text-red-600 font-medium"
-                          : "text-slate-400"
-                    }
-                  >
-                    {item.step}
-                  </span>
-                  {item.active && (
-                    <div className="flex gap-0.5 ml-auto">
-                      <div className="h-1 w-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="h-1 w-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="h-1 w-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AIChat() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

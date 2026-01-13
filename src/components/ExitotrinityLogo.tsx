@@ -1,5 +1,3 @@
-import React from "react";
-
 export function ExitotrinityLogo({ size = 200 }: { size?: number }) {
   return (
     <div
