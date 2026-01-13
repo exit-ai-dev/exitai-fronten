@@ -123,7 +123,7 @@
 
 @layer base {
   html {
-    font-size: 10px;
+    font-size: 11px;
   }
   * {
     @apply border-border outline-ring/50;
