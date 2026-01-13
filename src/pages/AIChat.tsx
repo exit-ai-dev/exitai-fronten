@@ -28,7 +28,8 @@ import {
   Bot,
 } from "lucide-react";
 import MarkdownMessage from "../components/MarkdownMessage";
-import { ThinkingOverlay } from "../components/ThinkingOverlay";
+import { LogoThinkingOverlay } from "../components/LogoThinkingOverlay";
+import { OrbitLogo } from "../components/OrbitLogo";
 import ThinkingProcess from "../components/ThinkingProcess";
 import { formatRelativeTime } from "../lib/time";
 
@@ -493,7 +494,7 @@ export default function AIChat() {
       <div className="flex-1 flex flex-col relative bg-white">
         <header className="h-12 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-red-500" />
+            <OrbitLogo size={28} showText={false} className="shrink-0" />
             <span className="text-sm font-medium text-slate-900">EXIT GPT AI</span>
           </div>
           <div className="flex items-center gap-3">
@@ -530,7 +531,7 @@ export default function AIChat() {
           </div>
 
           {/* Show logo animation overlay when loading */}
-          {showLoader && messages[messages.length - 1]?.role === "user" && <ThinkingOverlay />}
+          {showLoader && messages[messages.length - 1]?.role === "user" && <LogoThinkingOverlay />}
         </div>
 
         <div className="p-4 border-t border-slate-100">
