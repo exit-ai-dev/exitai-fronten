@@ -8,7 +8,7 @@ export default function NotFound() {
       <p className="text-sm opacity-70">お探しのページは見つかりませんでした。</p>
       <div className="flex justify-center gap-2">
         <Link to="/" className="btn-primary">ホームへ戻る</Link>
-        <Link to="/chat/ai" className="btn-outline">AIチャットへ</Link>
+        <Link to="/" className="btn-outline">AIチャットへ</Link>
       </div>
     </div>
   );

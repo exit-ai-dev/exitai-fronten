@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 // ナビゲーションメニュー。ログインや企業ダッシュボードへのリンクを追加しています。
 const nav = [
-  { to: '/chat/ai', label: 'AIチャット' },
+  { to: '/', label: 'AIチャット' },
   { to: '/attendance', label: '勤怠管理' }
 ];
 
@@ -49,6 +49,7 @@ export default function AppLayout() {
               <NavLink
                 key={n.to}
                 to={n.to}
+                end={n.to === '/'}
                 className={({ isActive }) =>
                   'px-3 py-2 rounded-xl text-sm transition ' +
                   (isActive
@@ -75,6 +76,7 @@ export default function AppLayout() {
             <NavLink
               key={n.to}
               to={n.to}
+              end={n.to === '/'}
               className={({ isActive }) =>
                 'whitespace-nowrap px-3 py-1.5 rounded-xl text-sm transition ' +
                 (isActive

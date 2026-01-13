@@ -32,7 +32,7 @@ export default function ConversationHistory() {
 
   const handleLoadConversation = (id: string) => {
     // 会話を読み込んでAIChatページへ遷移
-    navigate(`/chat/ai?conversation=${id}`);
+    navigate(`/?conversation=${id}`);
   };
 
   return (
@@ -41,7 +41,7 @@ export default function ConversationHistory() {
         {/* ヘッダー */}
         <header className="sticky top-0 backdrop-blur-sm bg-[var(--bg)]/95 z-10 flex items-center gap-2 px-4 md:px-6 py-3 md:py-4 border-b border-[var(--border)]">
           <button
-            onClick={() => navigate("/chat")}
+            onClick={() => navigate("/")}
             className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm bg-[var(--bg)] hover:bg-[var(--surface)] focus-visible:ring-2 ring-brand ring-offset-2 transition"
           >
             ← 戻る
