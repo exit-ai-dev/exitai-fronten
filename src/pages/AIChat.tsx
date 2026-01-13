@@ -28,6 +28,8 @@ import {
   Bot,
 } from "lucide-react";
 import MarkdownMessage from "../components/MarkdownMessage";
+import { ThinkingOverlay } from "../components/ThinkingOverlay";
+import ThinkingProcess from "../components/ThinkingProcess";
 import { formatRelativeTime } from "../lib/time";
 
 const KUMA_STYLE = [
@@ -77,6 +79,14 @@ function MessageRow({ message, isUser }: MessageRowProps) {
       )}
 
       <div className={`max-w-[75%] ${isUser ? "order-first" : ""}`}>
+        {/* Show thinking process for assistant messages */}
+        {!isUser && message.reasoning && (
+          <ThinkingProcess
+            reasoning={message.reasoning}
+            thinkingTime={message.reasoningTokens ? Math.round(message.reasoningTokens / 100) : undefined}
+          />
+        )}
+
         <div className={`rounded-full px-5 py-3 ${isUser ? "bg-red-600 text-white" : "bg-slate-100 text-slate-900"}`}>
           {isUser ? (
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -419,8 +429,32 @@ export default function AIChat() {
             }
           });
         },
-        () => {
-          // ストリーミング完了
+        (reasoning?: string, reasoningTokens?: number) => {
+          // ストリーミング完了 - 思考過程を保存
+          if (reasoning || reasoningTokens) {
+            setConversationTree((prev) => {
+              const currentMsgs = getCurrentMessages(prev);
+              const lastMsg = currentMsgs[currentMsgs.length - 1];
+              if (lastMsg && lastMsg.role === "assistant") {
+                return {
+                  ...prev,
+                  nodes: new Map(prev.nodes).set(
+                    prev.currentPath[prev.currentPath.length - 1],
+                    {
+                      ...prev.nodes.get(prev.currentPath[prev.currentPath.length - 1])!,
+                      message: {
+                        ...lastMsg,
+                        reasoning,
+                        reasoningTokens,
+                      },
+                    }
+                  ),
+                };
+              }
+              return prev;
+            });
+          }
+
           setIsStreaming(false);
           isSubmitting.current = false; // 二重送信フラグOFF
           const currentMessages = getCurrentMessages(conversationTree);
@@ -553,9 +587,10 @@ export default function AIChat() {
               const isUser = m.role === "user";
               return <MessageRow key={m.timestamp ?? i} message={m} isUser={isUser} />;
             })}
-
-            {showLoader && messages[messages.length - 1]?.role === "user" && <ThinkingMessage />}
           </div>
+
+          {/* Show logo animation overlay when loading */}
+          {showLoader && messages[messages.length - 1]?.role === "user" && <ThinkingOverlay />}
         </div>
 
         <div className="p-4 border-t border-slate-100">

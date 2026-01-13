@@ -81,14 +81,14 @@ export async function sendChat(
 /* ---------- ストリーミング ---------- */
 export type ChatStreamHandlers = {
   onToken: (chunk: string) => void;
-  onDone?: () => void;
+  onDone?: (reasoning?: string, reasoningTokens?: number) => void;
   onError?: (e: unknown) => void;
 };
 
 export function streamChat(
   req: ChatRequest,
   onToken: (chunk: string) => void,
-  onDone?: () => void,
+  onDone?: (reasoning?: string, reasoningTokens?: number) => void,
   onError?: (e: ChatApiError) => void
 ) {
   const controller = new AbortController();
@@ -111,6 +111,8 @@ export function streamChat(
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
+      let reasoning: string | undefined;
+      let reasoningTokens: number | undefined;
 
       while (!done) {
         const { value, done: d } = await reader.read();
@@ -124,13 +126,25 @@ export function streamChat(
             throw new ChatApiError(500, 'SERVER', chunk.replace("ERROR: ", ""), false);
           }
 
+          // REASONING: で始まる場合は思考過程（ストリーミング終了時のメタデータ）
+          if (chunk.startsWith("REASONING: ")) {
+            try {
+              const metadata = JSON.parse(chunk.replace("REASONING: ", ""));
+              reasoning = metadata.reasoning;
+              reasoningTokens = metadata.reasoningTokens;
+            } catch {
+              // JSONパースエラーは無視
+            }
+            continue;
+          }
+
           // 即座にトークンを送信（バッファリングなし）
           if (chunk) {
             onToken(chunk);
           }
         }
       }
-      onDone?.();
+      onDone?.(reasoning, reasoningTokens);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
         onDone?.(); // Abort時も正常終了扱い
