@@ -1,6 +1,5 @@
 // src/pages/AIChat.tsx - 完全刷新版
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { streamChat, ChatApiError } from "../lib/chatApi";
 import type { ChatMessage } from "../lib/chatApi";
 import { copyToClipboard } from "../lib/copy";
@@ -15,10 +14,21 @@ import {
 import { getSessionKeys } from "../lib/session";
 import { saveConversation, getConversation } from "../lib/conversationApi";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Send, Paperclip, Mic, Plus, Search, MessageSquare, Settings, ChevronDown, Copy, Check } from "lucide-react";
+import {
+  Send,
+  Paperclip,
+  Mic,
+  Plus,
+  MessageSquare,
+  Settings,
+  HelpCircle,
+  Copy,
+  Check,
+  User,
+  Bot,
+} from "lucide-react";
 import MarkdownMessage from "../components/MarkdownMessage";
 import { formatRelativeTime } from "../lib/time";
-import { AmbientBackground } from "../components/AmbientBackground";
 
 const KUMA_STYLE = [
   "出力ルール：すべての文末に必ず『クマ♡』を付けて返答してください。",
@@ -57,42 +67,36 @@ function MessageRow({ message, isUser }: MessageRowProps) {
   }, [message.content]);
 
   return (
-    <div className={`flex gap-4 ${isUser ? "justify-end" : ""}`}>
+    <div className={`flex gap-3 ${isUser ? "justify-end" : ""}`}>
       {!isUser && (
         <div className="flex-shrink-0">
-          <div className="h-8 w-8 rounded-lg glass border border-primary/20 flex items-center justify-center">
-            <img src="/brand.jpg" alt="ET Logo" className="h-6 w-6 object-contain" />
+          <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+            <Bot className="h-4 w-4 text-slate-600" />
           </div>
         </div>
       )}
 
-      <div className={`max-w-[80%] ${isUser ? "order-first" : ""}`}>
-        <div
-          className={`rounded-2xl px-4 py-3 ${
-            isUser
-              ? "bg-primary/10 border border-primary/20 rounded-tr-sm"
-              : "glass border border-border rounded-tl-sm"
-          }`}
-        >
+      <div className={`max-w-[75%] ${isUser ? "order-first" : ""}`}>
+        <div className={`rounded-full px-5 py-3 ${isUser ? "bg-red-600 text-white" : "bg-slate-100 text-slate-900"}`}>
           {isUser ? (
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
           ) : (
-            <div className="text-sm text-foreground leading-relaxed">
+            <div className="text-sm leading-relaxed">
               <MarkdownMessage content={message.content} />
             </div>
           )}
         </div>
 
         {!isUser && (
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-1.5 ml-2">
             <button
               onClick={handleCopy}
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+              className="p-1 text-slate-400 hover:text-red-600 transition-colors"
             >
               {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
             </button>
             {message.timestamp && (
-              <span className="text-[10px] text-muted-foreground">{formatRelativeTime(message.timestamp)}</span>
+              <span className="text-[10px] text-slate-400">{formatRelativeTime(message.timestamp)}</span>
             )}
           </div>
         )}
@@ -100,18 +104,71 @@ function MessageRow({ message, isUser }: MessageRowProps) {
 
       {isUser && (
         <div className="flex-shrink-0">
-          <div className="h-8 w-8 rounded-lg glass border border-border flex items-center justify-center">
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
+          <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center">
+            <User className="h-4 w-4 text-white" />
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ThinkingMessage() {
+  const thinkingSteps = [
+    { step: "Analyzing context...", done: true },
+    { step: "Retrieving relevant history...", done: true },
+    { step: "Drafting a response...", active: true },
+    { step: "Polishing language...", done: false },
+    { step: "Finalizing output...", done: false },
+  ];
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex-shrink-0">
+        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+          <Bot className="h-4 w-4 text-slate-600" />
+        </div>
+      </div>
+      <div className="flex-1 max-w-[75%]">
+        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+          <div className="w-full flex items-center gap-3 px-5 py-3">
+            <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-sm font-medium text-slate-900">Thinking...</span>
+            <span className="text-xs text-slate-400 ml-auto">3 of 5</span>
+          </div>
+          <div className="px-5 pb-4 border-t border-slate-100">
+            <div className="pt-3 space-y-2">
+              {thinkingSteps.map((item, index) => (
+                <div key={index} className="flex items-center gap-3 text-sm">
+                  <div
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      item.done ? "bg-green-500" : item.active ? "bg-red-500 animate-pulse" : "bg-slate-300"
+                    }`}
+                  />
+                  <span
+                    className={
+                      item.done
+                        ? "text-slate-400 line-through"
+                        : item.active
+                          ? "text-red-600 font-medium"
+                          : "text-slate-400"
+                    }
+                  >
+                    {item.step}
+                  </span>
+                  {item.active && (
+                    <div className="flex gap-0.5 ml-auto">
+                      <div className="h-1 w-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="h-1 w-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="h-1 w-1 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -191,9 +248,9 @@ export default function AIChat() {
     };
   }, [isStreaming, showLoader]);
 
-  // テーマ復元
+  // チャット画面はライトテーマ固定
   useEffect(() => {
-    document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("dark");
   }, []);
 
   // TTS設定の復元
@@ -403,81 +460,69 @@ export default function AIChat() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <AmbientBackground />
-
+    <div className="flex h-screen bg-white text-slate-900 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 h-full flex flex-col glass border-r border-border/50 relative z-10">
-        <div className="p-4 border-b border-border/50 space-y-3">
-          <div className="flex items-center gap-3 px-2">
-            <img src="/brand.jpg" alt="ET Logo" className="h-10 w-10 object-contain" />
-            <div>
-              <h1 className="text-sm font-semibold text-foreground">EXIT GPT AI</h1>
-              <p className="text-xs text-muted-foreground">AI Chat Assistant</p>
-            </div>
-          </div>
+      <aside className="w-64 h-full flex flex-col bg-white border-r border-slate-100">
+        <div className="p-5">
           <button
             onClick={newChat}
-            className="w-full justify-start gap-2 h-10 glass hover:bg-primary/10 text-primary border border-primary/20 rounded-lg transition-all flex items-center px-4"
+            className="w-full flex items-center justify-center gap-2 h-11 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-full transition-colors"
           >
             <Plus className="h-4 w-4" />
-            新しいチャット
+            New Chat
           </button>
         </div>
 
-        <div className="px-4 pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="チャットを検索..."
-              className="w-full h-9 pl-9 pr-3 rounded-lg glass-light border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-2 py-2">
-          <div className="mb-2">
-            <button className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-              <ChevronDown className="h-3 w-3" />
-              履歴
-            </button>
-          </div>
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          <p className="px-3 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Recent</p>
           <div className="space-y-1">
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all bg-primary/10 text-primary border border-primary/20">
-              <MessageSquare className="h-4 w-4 flex-shrink-0" />
+            <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-left transition-all bg-red-50 text-red-600 font-medium">
+              <MessageSquare className="h-4 w-4 flex-shrink-0 text-red-500" />
               <span className="text-sm truncate">現在の会話</span>
+              <div className="ml-auto h-2 w-2 rounded-full bg-red-500" />
             </button>
           </div>
         </div>
 
-        <div className="p-4 border-t border-border/50 space-y-2">
-          <button
-            onClick={() => navigate("/history")}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-all text-sm"
-          >
-            <MessageSquare className="h-4 w-4" />
-            会話履歴
-          </button>
+        <div className="p-4 border-t border-slate-100 space-y-1">
           <button
             onClick={() => navigate("/settings")}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-all text-sm"
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-full text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all text-sm"
           >
             <Settings className="h-4 w-4" />
-            設定
+            Settings
           </button>
+          <button
+            onClick={() => navigate("/history")}
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-full text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all text-sm"
+          >
+            <MessageSquare className="h-4 w-4" />
+            History
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-2 rounded-full text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all text-sm">
+            <HelpCircle className="h-4 w-4" />
+            Help
+          </button>
+          <div className="flex items-center gap-3 px-4 py-3 mt-3 border-t border-slate-100 pt-4">
+            <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white">
+              ET
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-900 truncate">Exit Trinity</p>
+              <p className="text-[10px] text-slate-400">Pro Plan</p>
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative z-10">
-        {/* Header */}
-        <header className="h-14 flex items-center justify-between px-6 glass border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <img src="/brand.jpg" alt="ET Logo" className="h-8 w-8 object-contain" />
-            <span className="text-sm font-medium text-foreground">EXIT GPT AI</span>
+      <div className="flex-1 flex flex-col relative bg-white">
+        <header className="h-12 flex items-center justify-between px-6 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-red-500" />
+            <span className="text-sm font-medium text-slate-900">EXIT GPT AI</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3">
             <select
               value={cat}
               onChange={(e) => {
@@ -485,7 +530,7 @@ export default function AIChat() {
                 setCat(c);
                 setSys(DEFAULT_SYS(c));
               }}
-              className="rounded-lg border border-border px-2 py-1 bg-input text-foreground text-xs"
+              className="text-xs text-slate-400 bg-transparent focus:outline-none"
             >
               {CATS.map((c) => (
                 <option key={c} value={c}>
@@ -493,72 +538,43 @@ export default function AIChat() {
                 </option>
               ))}
             </select>
+            <span className="text-xs text-slate-400 font-mono">gpt-4o-mini</span>
           </div>
         </header>
 
-        {/* Messages Area - aria-busyでスクリーンリーダーに状態通知 */}
         <div ref={listRef} className="flex-1 overflow-y-auto relative" aria-busy={isStreaming}>
-          <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-            {messages.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center min-h-[60vh] gap-6"
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-                  <div className="relative h-32 w-32 rounded-2xl glass flex items-center justify-center border border-primary/20">
-                    <img src="/brand.jpg" alt="ET Logo" className="h-28 w-28 object-contain" />
-                  </div>
-                </div>
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-semibold text-foreground">EXIT GPT AI</h2>
-                  <p className="text-sm text-muted-foreground">カテゴリを選んで質問を入力してください</p>
-                </div>
-              </motion.div>
-            )}
-
+          <div className="absolute top-8 left-0 right-0 text-center pointer-events-none">
+            <h1 className="font-serif text-4xl font-medium text-slate-900 tracking-tight">
+              How can I help you <span className="text-red-600">today</span>?
+            </h1>
+          </div>
+          <div className="max-w-1xl mx-auto px-6 pt-24 pb-8 space-y-6">
             {messages.map((m, i) => {
               const isUser = m.role === "user";
               return <MessageRow key={m.timestamp ?? i} message={m} isUser={isUser} />;
             })}
 
-            {/* ローディング表示（150ms遅延後に表示、一度表示したら最低300ms表示） */}
-            {showLoader && messages[messages.length - 1]?.role === 'user' && (
-              <div className="flex gap-4">
-                <div className="flex-shrink-0">
-                  <div className="h-8 w-8 rounded-lg glass border border-primary/20 flex items-center justify-center">
-                    <img
-                      src="/brand.jpg"
-                      alt="ET Logo"
-                      className="h-6 w-6 object-contain motion-reduce:animate-none"
-                      style={{ animation: "color-pulse 2s ease-in-out infinite" }}
-                      aria-label="読み込み中"
-                    />
-                  </div>
-                </div>
-                <div className="glass rounded-2xl rounded-tl-sm px-4 py-3 border border-primary/10">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce motion-reduce:animate-none" style={{ animationDelay: "0ms" }} />
-                    <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce motion-reduce:animate-none" style={{ animationDelay: "150ms" }} />
-                    <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce motion-reduce:animate-none" style={{ animationDelay: "300ms" }} />
-                  </div>
-                </div>
-              </div>
-            )}
+            {showLoader && messages[messages.length - 1]?.role === "user" && <ThinkingMessage />}
           </div>
         </div>
 
-        {/* Input */}
-        <div className="p-4 glass border-t border-border/50">
-          <div className="max-w-4xl mx-auto">
+        <div className="p-4 border-t border-slate-100">
+          <div className="max-w-3xl mx-auto">
             <form onSubmit={onSubmit}>
               <div
-                className={`relative rounded-xl border transition-all ${
-                  isFocused ? "glass border-primary/30 shadow-lg shadow-primary/5" : "glass-light border-border"
+                className={`relative rounded-full transition-all ${
+                  isFocused ? "bg-white border-2 border-red-200 shadow-lg" : "bg-slate-50 border-2 border-slate-200"
                 }`}
               >
-                <div className="flex items-end gap-3 p-3">
+                <div className="flex items-center gap-3 px-5 py-3">
+                  <button
+                    type="button"
+                    disabled={isStreaming}
+                    className="p-1.5 text-slate-400 hover:text-red-600 transition-colors rounded-full hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </button>
+
                   <textarea
                     ref={textareaRef}
                     value={input}
@@ -571,50 +587,47 @@ export default function AIChat() {
                         onSubmit(e);
                       }
                     }}
-                    placeholder="質問を入力..."
+                    placeholder="Ask a follow-up question..."
                     rows={1}
-                    disabled={isStreaming} // ローディング中は入力無効化
-                    className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground min-h-[24px] max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isStreaming}
+                    className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-900 placeholder:text-slate-400 min-h-[24px] max-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
 
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={isStreaming}
-                      className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Paperclip className="h-4 w-4 mx-auto" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isStreaming}
-                      onClick={() => setTtsEnabled(!ttsEnabled)}
-                      className={`h-8 w-8 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                        ttsEnabled ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      }`}
-                    >
-                      <Mic className="h-4 w-4 mx-auto" />
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!input.trim() || isStreaming} // ローディング中または空文字は送信無効化
-                      className={`h-8 w-8 rounded-lg transition-all ${
-                        input.trim() && !isStreaming
-                          ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-                          : "bg-secondary text-muted-foreground cursor-not-allowed"
-                      }`}
-                    >
-                      <Send className="h-4 w-4 mx-auto" />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    disabled={isStreaming}
+                    onClick={() => setTtsEnabled(!ttsEnabled)}
+                    className={`p-1.5 rounded-full transition-colors ${
+                      ttsEnabled
+                        ? "text-red-600 bg-red-50"
+                        : "text-slate-400 hover:text-red-600 hover:bg-slate-100"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={!input.trim() || isStreaming}
+                    className={`h-9 w-9 rounded-full flex items-center justify-center transition-all ${
+                      input.trim() && !isStreaming
+                        ? "bg-red-600 hover:bg-red-700 text-white"
+                        : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    }`}
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mt-2 px-1">
-                <span className="text-[10px] text-muted-foreground">
-                  <kbd className="px-1 py-0.5 rounded bg-secondary text-muted-foreground font-mono">Enter</kbd> で送信
+              <div className="flex items-center justify-center mt-2">
+                <span className="text-[10px] text-slate-400">
+                  Press{" "}
+                  <kbd className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-mono text-[10px]">
+                    Enter
+                  </kbd>{" "}
+                  to send
                 </span>
-                <span className="text-[10px] text-muted-foreground">EXIT GPT AI v1.0</span>
               </div>
             </form>
           </div>
