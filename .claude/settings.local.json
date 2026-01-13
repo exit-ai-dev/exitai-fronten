@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(test:*)",
+      "Bash(pnpm:*)",
+      "Bash(npm --version:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(del nul)",
+      "Bash(cat:*)",
+      "Bash(az --version:*)",
+      "Bash(gh auth:*)",
+      "Bash(az account show:*)"
+    ]
+  }
+}
