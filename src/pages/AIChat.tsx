@@ -1,4 +1,4 @@
-// src/pages/AIChat.tsx - 完全刷新版
+// src/pages/AIChat.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { streamChat, ChatApiError } from "../lib/chatApi";
 import type { ChatMessage } from "../lib/chatApi";
@@ -24,14 +24,16 @@ import {
   HelpCircle,
   Copy,
   Check,
-  User,
-  Bot,
 } from "lucide-react";
 import MarkdownMessage from "../components/MarkdownMessage";
-import { LogoThinkingOverlay } from "../components/LogoThinkingOverlay";
 import { OrbitLogo } from "../components/OrbitLogo";
 import ThinkingProcess from "../components/ThinkingProcess";
+import { TypingIndicator } from "../components/TypingIndicator";
+import { ShimmerSkeleton } from "../components/ShimmerSkeleton";
+import { AIAvatar } from "../components/AIAvatar";
 import { formatRelativeTime } from "../lib/time";
+
+// ─── constants ────────────────────────────────────────────────────────────────
 
 const KUMA_STYLE = [
   "出力ルール：すべての文末に必ず『クマ♡』を付けて返答してください。",
@@ -55,6 +57,8 @@ type Category = (typeof CATS)[number];
 const DEFAULT_SYS = (cat: string) =>
   `あなたは${cat}領域のシステムエンジニアです。要件の聞き返し→前提の明確化→箇条書きの手順→最後に注意点の順で、簡潔かつ正確に答えてください。`;
 
+// ─── MessageRow ───────────────────────────────────────────────────────────────
+
 type MessageRowProps = {
   message: ChatMessage;
   isUser: boolean;
@@ -71,26 +75,34 @@ function MessageRow({ message, isUser }: MessageRowProps) {
 
   return (
     <div className={`flex gap-3 ${isUser ? "justify-end" : ""}`}>
-      {!isUser && (
-        <div className="flex-shrink-0">
-          <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-            <Bot className="h-4 w-4 text-slate-600" />
-          </div>
-        </div>
-      )}
+      {/* AI avatar */}
+      {!isUser && <AIAvatar size="sm" />}
 
       <div className={`max-w-[75%] ${isUser ? "order-first" : ""}`}>
-        {/* Show thinking process for assistant messages */}
+        {/* Thinking process (AI only) */}
         {!isUser && message.reasoning && (
           <ThinkingProcess
             reasoning={message.reasoning}
-            thinkingTime={message.reasoningTokens ? Math.round(message.reasoningTokens / 100) : undefined}
+            thinkingTime={
+              message.reasoningTokens
+                ? Math.round(message.reasoningTokens / 100)
+                : undefined
+            }
           />
         )}
 
-        <div className={`rounded-full px-5 py-3 ${isUser ? "bg-red-600 text-white" : "bg-slate-100 text-slate-900"}`}>
+        {/* Message bubble */}
+        <div
+          className={`rounded-2xl px-4 py-3 ${
+            isUser
+              ? "gradient-primary text-white rounded-tr-sm shadow-glow"
+              : "glass rounded-tl-sm shadow-smooth text-foreground"
+          }`}
+        >
           {isUser ? (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {message.content}
+            </p>
           ) : (
             <div className="text-sm leading-relaxed">
               <MarkdownMessage content={message.content} />
@@ -98,25 +110,46 @@ function MessageRow({ message, isUser }: MessageRowProps) {
           )}
         </div>
 
+        {/* Copy + timestamp (AI only) */}
         {!isUser && (
           <div className="flex items-center gap-2 mt-1.5 ml-2">
             <button
               onClick={handleCopy}
-              className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+              className="p-1 text-muted-foreground hover:text-primary transition-colors"
             >
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
             </button>
             {message.timestamp && (
-              <span className="text-[10px] text-slate-400">{formatRelativeTime(message.timestamp)}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {formatRelativeTime(message.timestamp)}
+              </span>
             )}
           </div>
         )}
       </div>
 
+      {/* User avatar */}
       {isUser && (
         <div className="flex-shrink-0">
-          <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center">
-            <User className="h-4 w-4 text-white" />
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+            <svg
+              className="h-4 w-4 text-gray-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
           </div>
         </div>
       )}
@@ -124,26 +157,33 @@ function MessageRow({ message, isUser }: MessageRowProps) {
   );
 }
 
+// ─── AIChat ───────────────────────────────────────────────────────────────────
+
 export default function AIChat() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [conversationTree, setConversationTree] = useState<ConversationTree>(() => createConversationTree());
-  const [currentConversationId, setCurrentConversationId] = useState<string>(() => {
-    const conversationParam = searchParams.get('conversation');
-    return conversationParam || `conv_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-  });
+
+  // ── state (unchanged) ──
+  const [conversationTree, setConversationTree] = useState<ConversationTree>(
+    () => createConversationTree()
+  );
+  const [currentConversationId, setCurrentConversationId] = useState<string>(
+    () => {
+      const p = searchParams.get("conversation");
+      return p || `conv_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    }
+  );
   const [input, setInput] = useState("");
   const [cat, setCat] = useState<Category>(CATS[0]);
   const [sys, setSys] = useState(DEFAULT_SYS(CATS[0]));
   const [kumaEnabled] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [ttsMode] = useState<'webspeech' | 'voicevox'>('webspeech');
+  const [ttsMode] = useState<"webspeech" | "voicevox">("webspeech");
   const [isFocused, setIsFocused] = useState(false);
-
-  // ローディング表示制御（ちらつき防止）
   const [showLoader, setShowLoader] = useState(false);
 
+  // ── refs (unchanged) ──
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -151,36 +191,32 @@ export default function AIChat() {
   const streamStartRef = useRef<number>(0);
   const streamCharsRef = useRef<number>(0);
   const prevMessageCountRef = useRef<number>(0);
-
-  // ローディング制御用のタイマー参照（ちらつき防止）
   const loaderDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loaderMinDisplayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loaderShownAt = useRef<number | null>(null);
-
-  // 連打防止：送信中フラグ
   const isSubmitting = useRef(false);
 
-  const messages = useMemo(() => getCurrentMessages(conversationTree), [conversationTree]);
+  const messages = useMemo(
+    () => getCurrentMessages(conversationTree),
+    [conversationTree]
+  );
 
-  // ローディング表示制御（ちらつき防止: 150ms遅延 + 最低300ms表示）
+  // ── effects (unchanged) ──
+
   useEffect(() => {
     if (isStreaming) {
-      // 150ms遅延後にローディングを表示開始（短時間処理でのフラッシュ防止）
       loaderDelayTimer.current = setTimeout(() => {
         setShowLoader(true);
         loaderShownAt.current = Date.now();
       }, 150);
     } else {
-      // ローディング終了時
       if (loaderDelayTimer.current) {
         clearTimeout(loaderDelayTimer.current);
         loaderDelayTimer.current = null;
       }
-
       if (showLoader && loaderShownAt.current) {
         const elapsed = Date.now() - loaderShownAt.current;
-        const remaining = Math.max(0, 300 - elapsed); // 最低300ms表示（ちらつき防止）
-
+        const remaining = Math.max(0, 300 - elapsed);
         if (remaining > 0) {
           loaderMinDisplayTimer.current = setTimeout(() => {
             setShowLoader(false);
@@ -192,89 +228,86 @@ export default function AIChat() {
         }
       }
     }
-
     return () => {
       if (loaderDelayTimer.current) clearTimeout(loaderDelayTimer.current);
       if (loaderMinDisplayTimer.current) clearTimeout(loaderMinDisplayTimer.current);
     };
   }, [isStreaming, showLoader]);
 
-  // チャット画面はライトテーマ固定
+  // Light theme lock
   useEffect(() => {
     document.documentElement.classList.remove("dark");
   }, []);
 
-  // TTS設定の復元
+  // Restore TTS setting
   useEffect(() => {
-    const savedTts = localStorage.getItem(STORAGE_KEYS.tts);
-    if (savedTts === "enabled") {
-      setTtsEnabled(true);
-    }
+    if (localStorage.getItem(STORAGE_KEYS.tts) === "enabled") setTtsEnabled(true);
   }, []);
 
   // Textarea auto-resize
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        150
+      )}px`;
     }
   }, [input]);
 
-  // TTS関数
+  // TTS
   const speakTextWebSpeech = useCallback((text: string) => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ja-JP';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    speechSynthesisRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ja-JP";
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    speechSynthesisRef.current = u;
+    window.speechSynthesis.speak(u);
   }, []);
 
   const speakTextVoicevox = useCallback(async (text: string) => {
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-      const response = await fetch(`${API_BASE}/api/tts/voicevox`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, speaker_id: 1 })
+      const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+      const res = await fetch(`${API_BASE}/api/tts/voicevox`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, speaker_id: 1 }),
       });
-      if (response.ok) {
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        if (audioRef.current) {
-          audioRef.current.pause();
-        }
-        audioRef.current = new Audio(audioUrl);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        if (audioRef.current) audioRef.current.pause();
+        audioRef.current = new Audio(url);
         audioRef.current.play();
       }
     } catch (err) {
-      console.error('VOICEVOX TTS error:', err);
+      console.error("VOICEVOX TTS error:", err);
     }
   }, []);
 
-  const speakText = useCallback((text: string) => {
-    if (!ttsEnabled) return;
-    if (ttsMode === 'voicevox') {
-      speakTextVoicevox(text);
-    } else {
-      speakTextWebSpeech(text);
-    }
-  }, [ttsEnabled, ttsMode, speakTextVoicevox, speakTextWebSpeech]);
+  const speakText = useCallback(
+    (text: string) => {
+      if (!ttsEnabled) return;
+      if (ttsMode === "voicevox") speakTextVoicevox(text);
+      else speakTextWebSpeech(text);
+    },
+    [ttsEnabled, ttsMode, speakTextVoicevox, speakTextWebSpeech]
+  );
 
-  // 会話読み込み
+  // Load conversation
   useEffect(() => {
-    const conversationParam = searchParams.get('conversation');
-    if (conversationParam) {
-      getConversation(conversationParam).then(conv => {
-        if (conv && conv.conversation_tree) {
-          setConversationTree(conv.conversation_tree);
-          setCurrentConversationId(conv.id);
-        }
-      }).catch(err => {
-        console.error("[AIChat] Failed to load conversation:", err);
-      });
+    const p = searchParams.get("conversation");
+    if (p) {
+      getConversation(p)
+        .then((conv) => {
+          if (conv?.conversation_tree) {
+            setConversationTree(conv.conversation_tree);
+            setCurrentConversationId(conv.id);
+          }
+        })
+        .catch((err) => console.error("[AIChat] Failed to load conversation:", err));
     } else {
       try {
         const raw = localStorage.getItem(STORAGE_KEYS.tree);
@@ -285,36 +318,32 @@ export default function AIChat() {
           if (oldMsgs) {
             const msgs: ChatMessage[] = JSON.parse(oldMsgs);
             let tree = createConversationTree();
-            msgs.forEach(msg => {
-              tree = appendMessage(tree, msg);
-            });
+            msgs.forEach((m) => { tree = appendMessage(tree, m); });
             setConversationTree(tree);
           }
         }
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     }
   }, [searchParams]);
 
-  // ツリー保存
+  // Persist tree
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.tree, serializeTree(conversationTree));
     localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(messages));
   }, [conversationTree, messages]);
 
-  // データベースへ自動保存
+  // Auto-save to DB
   useEffect(() => {
     if (messages.length === 0) return;
-    const timer = setTimeout(() => {
-      saveConversation(currentConversationId, conversationTree).catch(err =>
+    const t = setTimeout(() => {
+      saveConversation(currentConversationId, conversationTree).catch((err) =>
         console.error("[AIChat] Failed to save conversation:", err)
       );
     }, 2000);
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [conversationTree, currentConversationId, messages.length]);
 
-  // 自動スクロール
+  // Auto-scroll
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isStreaming]);
@@ -323,19 +352,19 @@ export default function AIChat() {
     prevMessageCountRef.current = messages.length;
   }, [messages.length]);
 
+  // ── handlers (unchanged) ──
+
   const stop = useCallback(() => {
     setIsStreaming(false);
-    isSubmitting.current = false; // 二重送信フラグOFF
+    isSubmitting.current = false;
     localStorage.setItem(STORAGE_KEYS.tree, serializeTree(conversationTree));
     localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(messages));
   }, [conversationTree, messages]);
 
   const sendMessage = useCallback(
     async (msgs: ChatMessage[]) => {
-      // 連打防止：送信中または既にストリーミング中の場合は無視
       if (isStreaming || isSubmitting.current) return;
-
-      isSubmitting.current = true; // 二重送信フラグON
+      isSubmitting.current = true;
       setIsStreaming(true);
       streamStartRef.current = Date.now();
       streamCharsRef.current = 0;
@@ -346,18 +375,17 @@ export default function AIChat() {
         { messages: [{ role: "system", content: systemPrompt }, ...msgs] },
         (chunk: string) => {
           streamCharsRef.current += chunk.length;
-
           setConversationTree((prev) => {
-            const currentMsgs = getCurrentMessages(prev);
-            const lastMsg = currentMsgs[currentMsgs.length - 1];
-            if (lastMsg && lastMsg.role === "assistant") {
+            const cur = getCurrentMessages(prev);
+            const last = cur[cur.length - 1];
+            if (last?.role === "assistant") {
               return {
                 ...prev,
                 nodes: new Map(prev.nodes).set(
                   prev.currentPath[prev.currentPath.length - 1],
                   {
                     ...prev.nodes.get(prev.currentPath[prev.currentPath.length - 1])!,
-                    message: { ...lastMsg, content: lastMsg.content + chunk },
+                    message: { ...last, content: last.content + chunk },
                   }
                 ),
               };
@@ -371,23 +399,18 @@ export default function AIChat() {
           });
         },
         (reasoning?: string, reasoningTokens?: number) => {
-          // ストリーミング完了 - 思考過程を保存
           if (reasoning || reasoningTokens) {
             setConversationTree((prev) => {
-              const currentMsgs = getCurrentMessages(prev);
-              const lastMsg = currentMsgs[currentMsgs.length - 1];
-              if (lastMsg && lastMsg.role === "assistant") {
+              const cur = getCurrentMessages(prev);
+              const last = cur[cur.length - 1];
+              if (last?.role === "assistant") {
                 return {
                   ...prev,
                   nodes: new Map(prev.nodes).set(
                     prev.currentPath[prev.currentPath.length - 1],
                     {
                       ...prev.nodes.get(prev.currentPath[prev.currentPath.length - 1])!,
-                      message: {
-                        ...lastMsg,
-                        reasoning,
-                        reasoningTokens,
-                      },
+                      message: { ...last, reasoning, reasoningTokens },
                     }
                   ),
                 };
@@ -395,20 +418,16 @@ export default function AIChat() {
               return prev;
             });
           }
-
           setIsStreaming(false);
-          isSubmitting.current = false; // 二重送信フラグOFF
-          const currentMessages = getCurrentMessages(conversationTree);
-          const lastMessage = currentMessages[currentMessages.length - 1];
-          if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content) {
-            speakText(lastMessage.content);
-          }
+          isSubmitting.current = false;
+          const cur = getCurrentMessages(conversationTree);
+          const last = cur[cur.length - 1];
+          if (last?.role === "assistant" && last.content) speakText(last.content);
         },
         (err: ChatApiError) => {
-          // エラー時
           console.error(err);
           setIsStreaming(false);
-          isSubmitting.current = false; // 二重送信フラグOFF
+          isSubmitting.current = false;
         }
       );
     },
@@ -418,15 +437,12 @@ export default function AIChat() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
-
-    // 連打防止：空文字、送信中、またはストリーミング中は無視
     if (!text || isStreaming || isSubmitting.current) return;
-
     const userMsg: ChatMessage = { role: "user", content: text, timestamp: Date.now() };
-    const updatedTree = appendMessage(conversationTree, userMsg);
-    setConversationTree(updatedTree);
+    const updated = appendMessage(conversationTree, userMsg);
+    setConversationTree(updated);
     setInput("");
-    sendMessage(getCurrentMessages(updatedTree));
+    sendMessage(getCurrentMessages(updated));
   };
 
   const newChat = () => {
@@ -434,119 +450,191 @@ export default function AIChat() {
     setConversationTree(createConversationTree());
   };
 
+  // ── render ─────────────────────────────────────────────────────────────────
+
   return (
-    <div className="flex h-screen bg-white text-slate-900 overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 h-full flex flex-col bg-white border-r border-slate-100">
-        <div className="p-5">
+    <div
+      className="flex h-screen overflow-hidden"
+      style={{ background: "linear-gradient(135deg, #eff6ff 0%, #ffffff 50%, #ecfeff 100%)" }}
+    >
+      {/* Dot grid */}
+      <div
+        className="fixed inset-0 opacity-30 pointer-events-none"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(59,130,246,0.15) 1px, transparent 0)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+
+      {/* Ambient orbs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div
+          className="absolute -top-40 -right-40 w-96 h-96 rounded-full opacity-10 blur-3xl"
+          style={{ background: "linear-gradient(135deg, #3b82f6, #0ea5e9)" }}
+        />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-cyan-400 opacity-10 blur-3xl" />
+      </div>
+
+      {/* ── Sidebar ── */}
+      <aside className="relative z-10 w-60 h-full flex flex-col bg-white/80 backdrop-blur-xl border-r border-blue-100/50 shrink-0">
+        {/* Logo + New Chat */}
+        <div className="p-4 border-b border-blue-100/50">
+          <div className="flex items-center gap-2 px-1 mb-3">
+            <OrbitLogo size={22} showText={false} className="shrink-0" />
+            <span className="text-sm font-semibold text-foreground">EXIT GPT</span>
+          </div>
           <button
             onClick={newChat}
-            className="w-full flex items-center justify-center gap-2 h-11 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-full transition-colors"
+            className="w-full flex items-center justify-center gap-2 h-10 gradient-primary hover:opacity-90 text-white text-sm font-medium rounded-xl transition-all shadow-glow"
           >
             <Plus className="h-4 w-4" />
             New Chat
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-2">
-          <p className="px-3 mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Recent</p>
+        {/* Recent list */}
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          <p className="px-2 mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+            Recent
+          </p>
           <div className="space-y-1">
-            <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-left transition-all bg-red-50 text-red-600 font-medium">
-              <MessageSquare className="h-4 w-4 flex-shrink-0 text-red-500" />
-              <span className="text-sm truncate">現在の会話</span>
-              <div className="ml-auto h-2 w-2 rounded-full bg-red-500" />
+            <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all gradient-subtle border border-blue-100/60">
+              <MessageSquare className="h-4 w-4 flex-shrink-0 text-primary" />
+              <span className="text-sm truncate text-foreground">現在の会話</span>
+              <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
             </button>
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-100 space-y-1">
+        {/* Bottom nav */}
+        <div className="p-3 border-t border-blue-100/50 space-y-0.5">
           <button
             onClick={() => navigate("/settings")}
-            className="w-full flex items-center gap-3 px-4 py-2 rounded-full text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all text-sm"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-muted-foreground hover:bg-blue-50 hover:text-foreground transition-all text-sm"
           >
             <Settings className="h-4 w-4" />
             Settings
           </button>
           <button
             onClick={() => navigate("/history")}
-            className="w-full flex items-center gap-3 px-4 py-2 rounded-full text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all text-sm"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-muted-foreground hover:bg-blue-50 hover:text-foreground transition-all text-sm"
           >
             <MessageSquare className="h-4 w-4" />
             History
           </button>
-          <button className="w-full flex items-center gap-3 px-4 py-2 rounded-full text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all text-sm">
+          <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-muted-foreground hover:bg-blue-50 hover:text-foreground transition-all text-sm">
             <HelpCircle className="h-4 w-4" />
             Help
           </button>
-          <div className="flex items-center gap-3 px-4 py-3 mt-3 border-t border-slate-100 pt-4">
-            <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white">
+
+          {/* User */}
+          <div className="flex items-center gap-2.5 px-3 py-3 mt-1 border-t border-blue-100/50">
+            <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-white shadow-glow shrink-0">
               ET
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">Exit Trinity</p>
-              <p className="text-[10px] text-slate-400">Pro Plan</p>
+              <p className="text-sm font-medium text-foreground truncate">Exit Trinity</p>
+              <p className="text-[10px] text-muted-foreground">Pro Plan</p>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative bg-white">
-        <header className="h-12 flex items-center justify-between px-6 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <OrbitLogo size={28} showText={false} className="shrink-0" />
-            <span className="text-sm font-medium text-slate-900">EXIT GPT AI</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={cat}
-              onChange={(e) => {
-                const c = e.target.value as Category;
-                setCat(c);
-                setSys(DEFAULT_SYS(c));
-              }}
-              className="text-xs text-slate-400 bg-transparent focus:outline-none"
-            >
-              {CATS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-slate-400 font-mono">gpt-4o-mini</span>
+      {/* ── Main ── */}
+      <div className="relative z-10 flex-1 flex flex-col min-w-0">
+
+        {/* Header */}
+        <header className="glass border-b border-white/30 px-6 py-3 shadow-smooth shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AIAvatar size="sm" />
+              <div>
+                <h1 className="text-sm font-semibold text-foreground">EXIT GPT AI</h1>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] text-muted-foreground">オンライン</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <select
+                value={cat}
+                onChange={(e) => {
+                  const c = e.target.value as Category;
+                  setCat(c);
+                  setSys(DEFAULT_SYS(c));
+                }}
+                className="text-xs text-muted-foreground bg-transparent focus:outline-none cursor-pointer"
+              >
+                {CATS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded-lg">
+                gpt-4o-mini
+              </span>
+            </div>
           </div>
         </header>
 
-        <div ref={listRef} className="flex-1 overflow-y-auto relative" aria-busy={isStreaming}>
-          <div className="absolute top-8 left-0 right-0 text-center pointer-events-none">
-            <h1 className="font-serif text-4xl font-medium text-slate-900 tracking-tight">
-              How can I help you <span className="text-red-600">today</span>?
-            </h1>
-          </div>
-          <div className="max-w-1xl mx-auto px-6 pt-24 pb-8 space-y-6">
-            {messages.map((m, i) => {
-              const isUser = m.role === "user";
-              return <MessageRow key={m.timestamp ?? i} message={m} isUser={isUser} />;
-            })}
+        {/* Messages */}
+        <div
+          ref={listRef}
+          className="flex-1 overflow-y-auto relative"
+          aria-busy={isStreaming}
+        >
+          {/* Welcome heading */}
+          <div className="absolute top-8 left-0 right-0 text-center pointer-events-none select-none">
+            <h2
+              className="font-serif text-4xl font-medium tracking-tight"
+              style={{
+                background: "linear-gradient(135deg, #1e293b 0%, #3b82f6 50%, #0ea5e9 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              How can I help you today?
+            </h2>
           </div>
 
-          {/* Show logo animation overlay when loading */}
-          {showLoader && messages[messages.length - 1]?.role === "user" && <LogoThinkingOverlay />}
+          <div className="max-w-3xl mx-auto px-6 pt-24 pb-8 space-y-6">
+            {messages.map((m, i) => (
+              <MessageRow
+                key={m.timestamp ?? i}
+                message={m}
+                isUser={m.role === "user"}
+              />
+            ))}
+
+            {/* AI waiting animation */}
+            {showLoader && messages[messages.length - 1]?.role === "user" && (
+              <>
+                <TypingIndicator />
+                <ShimmerSkeleton />
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="p-4 border-t border-slate-100">
+        {/* Composer */}
+        <div className="p-4 border-t border-white/30 shrink-0">
           <div className="max-w-3xl mx-auto">
             <form onSubmit={onSubmit}>
               <div
-                className={`relative rounded-full transition-all ${
-                  isFocused ? "bg-white border-2 border-red-200 shadow-lg" : "bg-slate-50 border-2 border-slate-200"
+                className={`glass rounded-2xl p-2 transition-all ${
+                  isFocused ? "shadow-glow" : "shadow-smooth"
                 }`}
               >
-                <div className="flex items-center gap-3 px-5 py-3">
+                <div className="flex items-end gap-2">
                   <button
                     type="button"
                     disabled={isStreaming}
-                    className="p-1.5 text-slate-400 hover:text-red-600 transition-colors rounded-full hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-xl hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     <Paperclip className="h-4 w-4" />
                   </button>
@@ -563,20 +651,20 @@ export default function AIChat() {
                         onSubmit(e);
                       }
                     }}
-                    placeholder="Ask a follow-up question..."
+                    placeholder="メッセージを入力..."
                     rows={1}
                     disabled={isStreaming}
-                    className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-900 placeholder:text-slate-400 min-h-[24px] max-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground min-h-[24px] max-h-[150px] disabled:opacity-50 disabled:cursor-not-allowed py-2 px-1"
                   />
 
                   <button
                     type="button"
                     disabled={isStreaming}
                     onClick={() => setTtsEnabled(!ttsEnabled)}
-                    className={`p-1.5 rounded-full transition-colors ${
+                    className={`p-2 rounded-xl transition-colors shrink-0 ${
                       ttsEnabled
-                        ? "text-red-600 bg-red-50"
-                        : "text-slate-400 hover:text-red-600 hover:bg-slate-100"
+                        ? "text-primary bg-blue-50"
+                        : "text-muted-foreground hover:text-primary hover:bg-blue-50"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <Mic className="h-4 w-4" />
@@ -585,10 +673,10 @@ export default function AIChat() {
                   <button
                     type="submit"
                     disabled={!input.trim() || isStreaming}
-                    className={`h-9 w-9 rounded-full flex items-center justify-center transition-all ${
+                    className={`p-2.5 rounded-xl flex items-center justify-center transition-all shrink-0 ${
                       input.trim() && !isStreaming
-                        ? "bg-red-600 hover:bg-red-700 text-white"
-                        : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                        ? "gradient-primary text-white shadow-glow hover:opacity-90"
+                        : "bg-muted text-muted-foreground cursor-not-allowed"
                     }`}
                   >
                     <Send className="h-4 w-4" />
@@ -596,13 +684,16 @@ export default function AIChat() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center mt-2">
-                <span className="text-[10px] text-slate-400">
-                  Press{" "}
-                  <kbd className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-mono text-[10px]">
+              <div className="flex items-center justify-center mt-2 gap-1">
+                <span className="text-[10px] text-muted-foreground">
+                  <kbd className="px-1.5 py-0.5 rounded-lg bg-muted font-mono text-[10px]">
                     Enter
                   </kbd>{" "}
-                  to send
+                  で送信 ·{" "}
+                  <kbd className="px-1.5 py-0.5 rounded-lg bg-muted font-mono text-[10px]">
+                    Shift+Enter
+                  </kbd>{" "}
+                  で改行
                 </span>
               </div>
             </form>
