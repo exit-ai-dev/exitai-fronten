@@ -29,7 +29,6 @@ import MarkdownMessage from "../components/MarkdownMessage";
 import { OrbitLogo } from "../components/OrbitLogo";
 import ThinkingProcess from "../components/ThinkingProcess";
 import { TypingIndicator } from "../components/TypingIndicator";
-import { ShimmerSkeleton } from "../components/ShimmerSkeleton";
 import { AIAvatar } from "../components/AIAvatar";
 import { formatRelativeTime } from "../lib/time";
 
@@ -73,86 +72,51 @@ function MessageRow({ message, isUser }: MessageRowProps) {
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
 
-  return (
-    <div className={`flex gap-3 ${isUser ? "justify-end" : ""}`}>
-      {/* AI avatar */}
-      {!isUser && <AIAvatar size="sm" />}
+  /* ── User message ── */
+  if (isUser) {
+    return (
+      <div className="flex gap-3 items-start justify-end">
+        <div className="max-w-[72%]">
+          <div className="gradient-primary text-white rounded-2xl rounded-tr-sm shadow-glow px-4 py-3">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+          </div>
+        </div>
+        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+          <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
 
-      <div className={`max-w-[75%] ${isUser ? "order-first" : ""}`}>
-        {/* Thinking process (AI only) */}
-        {!isUser && message.reasoning && (
+  /* ── AI message ── */
+  return (
+    <div className="flex gap-3 items-start">
+      <AIAvatar size="sm" />
+      <div className="flex-1 min-w-0">
+        {message.reasoning && (
           <ThinkingProcess
             reasoning={message.reasoning}
-            thinkingTime={
-              message.reasoningTokens
-                ? Math.round(message.reasoningTokens / 100)
-                : undefined
-            }
+            thinkingTime={message.reasoningTokens ? Math.round(message.reasoningTokens / 100) : undefined}
           />
         )}
-
-        {/* Message bubble */}
-        <div
-          className={`rounded-2xl px-4 py-3 ${
-            isUser
-              ? "gradient-primary text-white rounded-tr-sm shadow-glow"
-              : "glass rounded-tl-sm shadow-smooth text-foreground"
-          }`}
-        >
-          {isUser ? (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">
-              {message.content}
-            </p>
-          ) : (
-            <div className="text-sm leading-relaxed">
-              <MarkdownMessage content={message.content} />
-            </div>
+        {/* Bubble — solid white with border for contrast against gradient bg */}
+        <div className="bg-white border border-blue-100/80 shadow-smooth rounded-2xl rounded-tl-sm px-4 py-3 text-foreground">
+          <div className="text-sm leading-relaxed">
+            <MarkdownMessage content={message.content} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mt-1.5 ml-1">
+          <button onClick={handleCopy} className="p-1 text-muted-foreground hover:text-primary transition-colors">
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          </button>
+          {message.timestamp && (
+            <span className="text-[10px] text-muted-foreground">{formatRelativeTime(message.timestamp)}</span>
           )}
         </div>
-
-        {/* Copy + timestamp (AI only) */}
-        {!isUser && (
-          <div className="flex items-center gap-2 mt-1.5 ml-2">
-            <button
-              onClick={handleCopy}
-              className="p-1 text-muted-foreground hover:text-primary transition-colors"
-            >
-              {copied ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                <Copy className="h-3 w-3" />
-              )}
-            </button>
-            {message.timestamp && (
-              <span className="text-[10px] text-muted-foreground">
-                {formatRelativeTime(message.timestamp)}
-              </span>
-            )}
-          </div>
-        )}
       </div>
-
-      {/* User avatar */}
-      {isUser && (
-        <div className="flex-shrink-0">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-            <svg
-              className="h-4 w-4 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -602,7 +566,7 @@ export default function AIChat() {
             </h2>
           </div>
 
-          <div className="max-w-3xl mx-auto px-6 pt-24 pb-8 space-y-6">
+          <div className="px-8 pt-24 pb-8 space-y-6">
             {messages.map((m, i) => (
               <MessageRow
                 key={m.timestamp ?? i}
@@ -611,20 +575,16 @@ export default function AIChat() {
               />
             ))}
 
-            {/* AI waiting animation */}
+            {/* AI waiting animation — single unified component */}
             {showLoader && messages[messages.length - 1]?.role === "user" && (
-              <>
-                <TypingIndicator />
-                <ShimmerSkeleton />
-              </>
+              <TypingIndicator />
             )}
           </div>
         </div>
 
         {/* Composer */}
-        <div className="p-4 border-t border-white/30 shrink-0">
-          <div className="max-w-3xl mx-auto">
-            <form onSubmit={onSubmit}>
+        <div className="px-8 py-4 border-t border-white/30 shrink-0">
+          <form onSubmit={onSubmit}>
               <div
                 className={`glass rounded-2xl p-2 transition-all ${
                   isFocused ? "shadow-glow" : "shadow-smooth"
@@ -696,8 +656,7 @@ export default function AIChat() {
                   で改行
                 </span>
               </div>
-            </form>
-          </div>
+          </form>
         </div>
       </div>
     </div>
