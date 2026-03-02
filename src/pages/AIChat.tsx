@@ -30,6 +30,7 @@ import { OrbitLogo } from "../components/OrbitLogo";
 import ThinkingProcess from "../components/ThinkingProcess";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { AIAvatar } from "../components/AIAvatar";
+import { FileUploadDialog } from "../components/FileUploadDialog";
 import { formatRelativeTime } from "../lib/time";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ export default function AIChat() {
   const [ttsMode] = useState<"webspeech" | "voicevox">("webspeech");
   const [isFocused, setIsFocused] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
+  const [fileDialogOpen, setFileDialogOpen] = useState(false);
 
   // ── refs (unchanged) ──
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -505,6 +507,9 @@ export default function AIChat() {
         </div>
       </aside>
 
+      {/* ── File Upload Dialog ── */}
+      <FileUploadDialog open={fileDialogOpen} onClose={() => setFileDialogOpen(false)} />
+
       {/* ── Main ── */}
       <div className="relative z-10 flex-1 flex flex-col min-w-0">
 
@@ -593,8 +598,10 @@ export default function AIChat() {
                 <div className="flex items-end gap-2">
                   <button
                     type="button"
+                    onClick={() => setFileDialogOpen(true)}
                     disabled={isStreaming}
                     className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-xl hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    title="ファイルを管理"
                   >
                     <Paperclip className="h-4 w-4" />
                   </button>
